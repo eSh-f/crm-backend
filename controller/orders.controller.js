@@ -94,33 +94,47 @@ const deleteOrder = async (req, res) => {
 
 
 const getFilteredOrders = async (req, res) => {
-    try{
-        const {status, client_id, freelancer_id, search} = req.query;
+    try {
+        const { status, client_id, freelancer_id, search, sort_by = 'created_at', sort_order = 'DESC' } = req.query;
+
         let conditions = [];
         let values = [];
 
-        if(status) {
+        if (status) {
             values.push(status);
             conditions.push(`status = $${values.length}`);
         }
 
-        if(client_id) {
+        if (client_id) {
             values.push(client_id);
             conditions.push(`client_id = $${values.length}`);
         }
 
-        if(freelancer_id) {
+        if (freelancer_id) {
             values.push(freelancer_id);
             conditions.push(`freelancer_id = $${values.length}`);
         }
 
-        if(search) {
-
+        if (search) {
+            values.push(`%${search}%`);
+            conditions.push(`title ILIKE $${values.length}`);
         }
 
-    }
-}
+        const allowedSortFields = ['created_at', 'budget', 'title'];
+        const allowedSortOrders = ['ASC', 'DESC'];
+        const sortField = allowedSortFields.includes(sort_by) ? sort_by : 'created_at';
+        const sortDirection = allowedSortOrders.includes(sort_order.toUpperCase()) ? sort_order.toUpperCase() : 'DESC';
 
+        const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+        const query = `SELECT * FROM orders ${whereClause} ORDER BY ${sortField} ${sortDirection}`;
+
+        const result = await db.query(query, values);
+        res.json(result.rows);
+    } catch (error) {
+        console.error('Ошибка при фильтрации и сортировке заказов:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
 
 
 module.exports = {
@@ -129,5 +143,6 @@ module.exports = {
     getOrdersByClient,
     createOrder,
     assignFreelancerToOrder,
-    deleteOrder
+    deleteOrder,
+    getFilteredOrders,
 };

@@ -6,7 +6,8 @@ const {
     getOrdersByClient,
     createOrder,
     assignFreelancerToOrder,
-    deleteOrder
+    deleteOrder,
+    getFilteredOrders
 
 } = require ('../controller/orders.controller');
 
@@ -26,6 +27,9 @@ router.post('/', createOrder);
 router.patch('/:orderId/assign', assignFreelancerToOrder);
 
 router.delete('/:id', deleteOrder);
+
+router.get('/filter', getFilteredOrders);
+
 
 
 

@@ -12,8 +12,8 @@ const register = async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
 
         const result = await db.query(
-            'INSERT INTO users (email, passwords, name, role) VALUES ($1, $2, $3, $4) RETURNING *',
-            [email, password, name, role || 'client']
+            'INSERT INTO users (email, password, name, role) VALUES ($1, $2, $3, $4) RETURNING *',
+            [email, hashedPassword, name, role || 'client']
         );
         res.status(201).json(result.rows[0]);
     } catch (error) {

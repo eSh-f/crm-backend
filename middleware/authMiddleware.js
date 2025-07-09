@@ -16,7 +16,7 @@ const authMiddleware = (req, res, next) => {
 
         req.user = decoded;
 
-        next(); // перехожу к другому обратотчику
+        next(); // тут уже дургой обработчик
     } catch(error) {
         return res.status(401).json({error: 'Неверный токен'});
     }

@@ -19,6 +19,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/uploads', express.static('uploads')); // это дл я аватара
 
 module.exports = app;
 

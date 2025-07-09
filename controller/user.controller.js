@@ -1,4 +1,5 @@
 const db = require('../db');
+const axios = require('axios');
 
 const getAllUsers = async (req, res) => {
     try {
@@ -14,10 +15,39 @@ const getAllUsers = async (req, res) => {
 
 const getMyProfile = async (req, res) => {
     const userId = req.userId; // todo проверить приходиьт ли из авторизации
+
     try{
         const result = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
         if(result.rows.length === 0) return res.status(404).json({error: 'Пользователь не найден'});
-        res.json(result.rows[0]);
+
+        const user = result.rows[0];
+
+        let githubData = null;
+
+        if(user.github_username){
+            try {
+                const response = await axios.get(`https://api.github.com/users/${user.github_username}`);
+                const data = response.data;
+
+                githubData = {
+                    login: data.login,
+                    avatar_url: data.avatar_url,
+                    html_url: data.html_url,
+                    public_repos: data.public_repos,
+                    bio: data.bio,
+                    followers: data.followers
+                };
+            } catch (error) {
+                console.warn('GitHub профиль не найден или ошибка запроса:', error.message);
+            }
+        }
+
+        res.json({
+            ...user,
+            github_profile: githubData,
+        });
+
+
     } catch(error) {
         console.error('Ошибка при получении профиля:', error);
         res.status(500).json({error: 'Internal Server Error'});
@@ -26,12 +56,12 @@ const getMyProfile = async (req, res) => {
 
 
 const createUser = async (req, res) => {
-    const {email, password, role, name} = req.body;
+    const {email, password, role, name, github_username} = req.body;
     const avatar = req.file ? `/uploads/${req.file.filename}` : null;
     try {
         const result = await db.query(
-            'INSERT INTO users (email, password, role, name, avatar) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-            [email, password, role, name, avatar]
+            'INSERT INTO users (email, password, role, name, avatar, github_username) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *',
+            [email, password, role, name, avatar, github_username || null]
         );
         res.status(201).json(result.rows[0]);
     } catch (error) {
@@ -43,7 +73,7 @@ const createUser = async (req, res) => {
 
 const updateMyProfile = async (req, res) => {
     const userId = req.userId;
-    const {email, password, name} = req.body;
+    const {email, password, name, github_username} = req.body;
     const avatar = req.file ? `/uploads/${req.file.filename}` : null;
 
     try{
@@ -55,6 +85,7 @@ const updateMyProfile = async (req, res) => {
         if(password) { fields.push(`password = $${i++}`); values.push(password);}
         if (name) { fields.push(`name = $${i++}`); values.push(name);}
         if(avatar) { fields.push(`avatar = $${i++}`); values.push(avatar);} // i всегда инкрементируется и $ увеличивается нет иньекций короче
+        if(github_username) { fields.push(`github_username = $${i++}`); values.push(github_username)}
 
         if(fields.length === 0) {
             return res.status(404).json({error: 'Нет данных для обновления'});

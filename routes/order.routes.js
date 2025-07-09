@@ -8,27 +8,30 @@ const {
     assignFreelancerToOrder,
     deleteOrder,
     getFilteredOrders
-
 } = require ('../controller/orders.controller');
 
+
+const authMiddleware = require('../middleware/authMiddleware');
+
+
 // все заказы
-router.get('/', getAllOrders);
+router.get('/',authMiddleware, getAllOrders);
 
 //заказы фрилансера
-router.get('/freelancer/:freelancerId', getOrdersByFreelancer);
+router.get('/freelancer/:freelancerId',authMiddleware, getOrdersByFreelancer);
 
 //заказы клиента
-router.get('/client/:clientId', getOrdersByClient);
+router.get('/client/:clientId',authMiddleware, getOrdersByClient);
 
 //доб заказ
-router.post('/', createOrder);
+router.post('/',authMiddleware, createOrder);
 
 // указ фрилансера
-router.patch('/:orderId/assign', assignFreelancerToOrder);
+router.patch('/:orderId/assign',authMiddleware, assignFreelancerToOrder);
 
-router.delete('/:id', deleteOrder);
+router.delete('/:id',authMiddleware, deleteOrder);
 
-router.get('/filter', getFilteredOrders);
+router.get('/filter',authMiddleware, getFilteredOrders);
 
 
 

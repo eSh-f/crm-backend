@@ -8,6 +8,7 @@ const notificationRoutes = require("./routes/notification.routes");
 const authRoutes = require('./routes/auth.routes');
 
 
+
 const app = express();
 
 app.use(cors());

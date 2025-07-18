@@ -1,5 +1,6 @@
 const db = require('../db');
 const axios = require('axios');
+const bcrypt = require('bcrypt');
 
 const getAllUsers = async (req, res) => {
     try {
@@ -14,7 +15,7 @@ const getAllUsers = async (req, res) => {
 
 
 const getMyProfile = async (req, res) => {
-    const userId = req.userId; // todo проверить приходиьт ли из авторизации
+    const userId = req.user.id; 
 
     try{
         const result = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
@@ -72,7 +73,7 @@ const createUser = async (req, res) => {
 
 
 const updateMyProfile = async (req, res) => {
-    const userId = req.userId;
+    const userId = req.user.id;
     const {email, password, name, github_username} = req.body;
     const avatar = req.file ? `/uploads/${req.file.filename}` : null;
 
@@ -116,10 +117,52 @@ const deleteUser = async (req, res) => {
     }
 };
 
+const changePassword = async (req, res) => {
+    const userId = req.user.id;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!oldPassword || !newPassword) {
+        return res.status(400).json({ error: 'Необходимо указать старый и новый пароль' });
+    }
+
+    try {
+        const result = await db.query('SELECT password FROM users WHERE id = $1', [userId]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Пользователь не найден' });
+        }
+        const user = result.rows[0];
+        const isMatch = await bcrypt.compare(oldPassword, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ error: 'Старый пароль неверен' });
+        }
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        await db.query('UPDATE users SET password = $1 WHERE id = $2', [hashedPassword, userId]);
+        res.json({ message: 'Пароль успешно изменён' });
+    
+    } catch (error) {
+        console.error('Ошибка при смене пароля:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
+const getUserById = async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await db.query('SELECT id, name FROM users WHERE id = $1', [id]);
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Пользователь не найден' });
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Ошибка при получении пользователя по id', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 module.exports = {
     getAllUsers,
     createUser,
     deleteUser,
     getMyProfile,
-    updateMyProfile
+    updateMyProfile,
+    changePassword,
+    getUserById
 };

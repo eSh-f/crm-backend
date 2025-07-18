@@ -3,7 +3,12 @@ const db = require('../db');
 // все
 const getAllOrders = async (req, res) => {
     try {
-        const result = await db.query('SELECT * FROM orders');
+        const result = await db.query(`
+            SELECT orders.*, users.name AS client_name
+            FROM orders
+            JOIN users ON orders.client_id = users.id
+            WHERE orders.deleted_by_client = false AND orders.freelancer_id IS NULL AND orders.status = $1
+        `, ['open']);
         res.json(result.rows);
     } catch(error) {
         console.error('Error fetching orders:',error);
@@ -14,10 +19,10 @@ const getAllOrders = async (req, res) => {
 
 //от исполнителя
 const getOrdersByFreelancer = async (req, res) => {
-    const {freelancerId} = req.query;
+    const {freelancerId} = req.params;
     try {
         const result = await db.query(
-            'SELECT * FROM orders WHERE freelancer_id = $1',
+            'SELECT * FROM orders WHERE freelancer_id = $1 AND deleted_by_client = false',
             [freelancerId]
         );
         res.json(result.rows);
@@ -44,7 +49,8 @@ const getOrdersByClient = async (req, res) => {
 
 // создать заказ
 const createOrder = async (req, res) => {
-    const { title, description, budget, status = 'open', client_id, freelancer_id = null } = req.body;
+    const { title, description, budget, status = 'open', freelancer_id = null } = req.body;
+    const client_id = req.user.id;
 
     try {
         const result = await db.query(
@@ -82,10 +88,14 @@ const assignFreelancerToOrder = async (req, res) => {
 // удалить заказ
 const deleteOrder = async (req, res) => {
     const { id } = req.params;
+    const clientId = req.user.id;
     try {
-        const result = await db.query('DELETE FROM orders WHERE id = $1 RETURNING *', [id]);
-        if (result.rows.length === 0) return res.status(404).json({ error: 'Заказ не найден' });
-        res.json({ message: 'Заказ удалён' });
+        const result = await db.query(
+            'UPDATE orders SET deleted_by_client = true WHERE id = $1 AND client_id = $2 RETURNING *',
+            [id, clientId]
+        );
+        if (result.rows.length === 0) return res.status(404).json({ error: 'Заказ не найден или нет доступа' });
+        res.json(result.rows[0]);
     } catch (error) {
         console.error('Ошибка при удалении заказа:', error);
         res.status(500).json({ error: 'Internal Server Error' });
@@ -136,6 +146,24 @@ const getFilteredOrders = async (req, res) => {
     }
 };
 
+const declineOrderByFreelancer = async (req, res) => {
+    const { orderId } = req.params;
+    const freelancerId = req.user.id;
+    try {
+        const result = await db.query(
+            'UPDATE orders SET freelancer_id = NULL, status = $1 WHERE id = $2 AND freelancer_id = $3 RETURNING *',
+            ['open', orderId, freelancerId]
+        );
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: 'Заказ не найден или нет доступа' });
+        }
+        res.json(result.rows[0]);
+    } catch (error) {
+        console.error('Ошибка при отказе от заказа:', error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 
 module.exports = {
     getAllOrders,
@@ -145,6 +173,7 @@ module.exports = {
     assignFreelancerToOrder,
     deleteOrder,
     getFilteredOrders,
+    declineOrderByFreelancer,
 };
 
 //todo возможно декомпозировать

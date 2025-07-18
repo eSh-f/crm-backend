@@ -6,7 +6,9 @@ const {  getAllUsers,
     createUser,
     deleteUser,
     getMyProfile,
-    updateMyProfile,} = require('../controller/user.controller');
+    updateMyProfile,
+    changePassword,
+    getUserById } = require('../controller/user.controller');
 
 const auth = require('../middleware/authMiddleware');
 const validate = require('../middleware/validateRequest');
@@ -21,6 +23,10 @@ router.delete('/:id',auth, deleteUser);
 router.get('/me', auth, getMyProfile);
 
 router.put('/me', auth, upload.single('avatar'), validate(updateSchema) , updateMyProfile);
+
+router.put('/me/password', auth, changePassword);
+
+router.get('/:id', auth, getUserById);
 
 module.exports = router;
 

@@ -7,7 +7,8 @@ const {
     createOrder,
     assignFreelancerToOrder,
     deleteOrder,
-    getFilteredOrders
+    getFilteredOrders,
+    declineOrderByFreelancer
 } = require ('../controller/orders.controller');
 
 
@@ -28,6 +29,8 @@ router.post('/',authMiddleware, createOrder);
 
 // указ фрилансера
 router.patch('/:orderId/assign',authMiddleware, assignFreelancerToOrder);
+
+router.patch('/:orderId/decline',authMiddleware, declineOrderByFreelancer);
 
 router.delete('/:id',authMiddleware, deleteOrder);
 
